@@ -5,11 +5,12 @@ const { rgb_triplets_from } = require('./image-data');
 const { map_to_palette } = require('./map-to-palette');
 const { read_png } = require('./read-png');
 const { write_png } = require('./write-png');
+const { write_bmp } = require('./write-bmp');
 
 setTimeout(main, 0);
 
 async function main() {
-    const in_file_path = process.argv[2];
+    const in_file_path = process.argv[2] || 'bnf.PNG';
     let out_file_path = process.argv[3];
 
     if (!fs.existsSync(in_file_path))
@@ -18,8 +19,10 @@ async function main() {
         print_usage_and_exit();
     }
 
+    const out_format = 'bmp'
+
     if (!out_file_path){
-        out_file_path = in_file_path + '.out-256.png';
+        out_file_path = in_file_path + '.out-256.' + out_format;
     }
 
     console.log(in_file_path, 'reading');
@@ -30,7 +33,14 @@ async function main() {
     const new_image = map_to_palette(image, palette);
 
     console.log(in_file_path, 'writing', out_file_path);
-    await write_png(out_file_path, new_image);
+    switch (out_format){
+        case "bmp": 
+            await write_bmp(out_file_path, new_image);
+        case "png":
+            await write_png(out_file_path, new_image);
+        default:
+            throw new Error('unsupported output format');
+    }
 }
 
 function print_usage_and_exit(){
