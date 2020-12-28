@@ -1,5 +1,4 @@
 const { assert } = require('./assert');
-const { create_image_data } = require('./image-data');
 
 module.exports = {
     map_to_palette
@@ -24,6 +23,11 @@ function map_to_palette(
     assert(palette.length / 3 >= 2, "need at least 2 colors")
 
     const result = Buffer.from(img.data);
+    const result_index_list = Buffer.alloc(img.width * img.height);
+    const result_stats = [];
+    for (let i=0; i<256; i++){
+        result_stats[i] = 0;
+    }
     
     const epf = Math.max(Math.min(error_propagation,1),0);
     
@@ -47,15 +51,17 @@ function map_to_palette(
         }
     
         for (var x = 0; x < img.width; x++) {
-            var idx = (img.width * y + x) << 2;
-            const orig_r = img.data[idx + 0];
-            const orig_g = img.data[idx + 1];
-            const orig_b = img.data[idx + 2];
+            const pixel_idx = img.width * y + x;
+            const pixel_idx_32bit = pixel_idx << 2;
+            const orig_r = img.data[pixel_idx_32bit + 0];
+            const orig_g = img.data[pixel_idx_32bit + 1];
+            const orig_b = img.data[pixel_idx_32bit + 2];
             const tgt_r = orig_r + err_nx_r + err_cr[x+1];
             const tgt_g = orig_g + err_nx_g + err_cg[x+1];
             const tgt_b = orig_b + err_nx_b + err_cb[x+1];
-            const pal_idx = findClosestRGB(palette, 
-                tgt_r, tgt_g, tgt_b)*3;
+            const color_idx = findClosestRGB(palette, 
+                tgt_r, tgt_g, tgt_b);
+            const pal_idx = color_idx*3;
             const pal_r = palette[pal_idx + 0];
             const pal_g = palette[pal_idx + 1];
             const pal_b = palette[pal_idx + 2];
@@ -74,13 +80,22 @@ function map_to_palette(
             err_nr[x+2] += ce_r * 0.0625;
             err_ng[x+2] += ce_g * 0.0625;
             err_nb[x+2] += ce_b * 0.0625;
-            result[idx + 0] = pal_r;
-            result[idx + 1] = pal_g;
-            result[idx + 2] = pal_b;
+            result[pixel_idx_32bit + 0] = pal_r;
+            result[pixel_idx_32bit + 1] = pal_g;
+            result[pixel_idx_32bit + 2] = pal_b;
+            result_index_list[pixel_idx] = color_idx;
+            result_stats[color_idx]++;
         }
     }
         
-    return create_image_data(img.width, img.height, result);
+    return {
+        width: img.width,
+        height: img.height,
+        data: result,
+        data_indexed: result_index_list,
+        stat_indexed: result_stats,
+        palette: Buffer.from(palette)
+    }
 }
 
 function findClosestRGB(palette, r, g, b) {

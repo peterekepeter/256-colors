@@ -7,6 +7,7 @@ const { read_png } = require('./read-png');
 const { write_png } = require('./write-png');
 const { write_bmp } = require('./write-bmp');
 const { detect_format_from_file_name, strip_extension } = require('./file-handling');
+const { write_pcx } = require('./write-pcx');
 
 setTimeout(main, 0);
 
@@ -22,7 +23,9 @@ async function main() {
         print_usage_and_exit();
     }
 
-    const out_format = 'bmp'
+    const out_format = (typeof out_file_path === 'string' && out_file_path.length > 0)
+        ? detect_format_from_file_name(out_file_path) || 'pcx' 
+        : 'pcx';
 
     if (!out_file_path){
         out_file_path =  strip_extension(in_file_path) + '-256.' + out_format;
@@ -33,10 +36,10 @@ async function main() {
 
     console.log(in_file_path, 'quantizing');
     const palette = neuquant.getPalette(rgb_triplets_from(image), 1);
-    const result_image = map_to_palette(image, palette);
+    const result = map_to_palette(image, palette);
 
     console.log(in_file_path, 'writing', out_file_path);
-    write_output(out_file_path, out_format, result_image);
+    write_output(out_file_path, out_format, result);
 }
 
 function print_usage_and_exit(){
@@ -53,12 +56,14 @@ async function read_input(file_path, format = 'png'){
     }
 }
 
-async function write_output(file_path = '', format = 'png', image = create_image_data()){
+async function write_output(file_path = '', format = 'png', image = map_to_palette()){
     switch (format){
         case "bmp": 
             return await write_bmp(file_path, image);
         case "png":
             return await write_png(file_path, image);
+        case "pcx":
+            return await write_pcx(file_path, image)
         default:
             throw new Error('unsupported output format');
     }

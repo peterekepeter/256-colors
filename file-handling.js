@@ -46,5 +46,8 @@ function detect_format_from_file_name(file_path = ''){
     if (file_path.endsWith('bmp') || file_path.endsWith('BMP')) {
         return 'bmp';
     }
-    throw new Error('unable to detect input format');
+    if (file_path.endsWith('pcx') || file_path.endsWith('PCX')) {
+        return 'pcx';
+    }
+    return null;
 }
