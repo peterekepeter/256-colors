@@ -35,8 +35,8 @@ async function main() {
     const image = await read_input(in_file_path, in_format);
 
     console.log(in_file_path, 'quantizing');
-    const palette = neuquant.getPalette(rgb_triplets_from(image), 1);
-    const result = map_to_palette(image, palette);
+    const palette = get_palette(image, { quality: 1, gamma_bias: 1 });
+    const result = map_to_palette(image, palette, { error_propagation: 0.8 });
 
     console.log(in_file_path, 'writing', out_file_path);
     write_output(out_file_path, out_format, result);
@@ -66,5 +66,16 @@ async function write_output(file_path = '', format = 'png', image = map_to_palet
             return await write_pcx(file_path, image)
         default:
             throw new Error('unsupported output format');
+    }
+}
+
+function get_palette(image = create_image_data(), options = { quality: 1, gamma_bias: 1 }){
+    options = { quality: 1, gamma_bias: 1, ...options };
+    if (gamma_bias === 1){
+        return neuquant.getPalette(rgb_triplets_from(image), quality);
+    } else {
+        const colors = rgb_triplets_from(image).map(c=>Math.floor(Math.pow(c/256.0,gamma_bias)*256.0));
+        const palette = neuquant.getPalette(colors, quality);
+        return palette.map(c=>Math.floor(Math.pow(c/256,1/gamma_bias)*256));
     }
 }
